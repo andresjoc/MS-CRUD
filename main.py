@@ -4,6 +4,7 @@ from routes import region
 from routes import city
 from routes import app_user
 from routes import health_record
+from routes import history
 from routes import wearable_model
 from routes import wearable
 from routes import monitoring_session
@@ -23,6 +24,7 @@ app.include_router(compute_status.router)
 app.include_router(country.router)
 app.include_router(region.router)
 app.include_router(health_record.router)
+app.include_router(history.router)
 app.include_router(measurement.router)
 app.include_router(metric_type.router)
 app.include_router(monitoring_session.router)
