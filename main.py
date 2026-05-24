@@ -13,6 +13,7 @@ from routes import alert
 from routes import severity_level
 from routes import ppg_sample
 from routes import compute_status
+from routes import region
 
 app = FastAPI(title="Ppg-monitoring-api")
 
@@ -27,6 +28,7 @@ app.include_router(measurement.router)
 app.include_router(metric_type.router)
 app.include_router(monitoring_session.router)
 app.include_router(ppg_sample.router)
+app.include_router(region.router)
 app.include_router(severity_level.router)
 app.include_router(wearable.router)
 app.include_router(wearable_model.router)

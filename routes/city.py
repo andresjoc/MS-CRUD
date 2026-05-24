@@ -14,7 +14,9 @@ router = APIRouter(
 
 
 @router.post("/", response_model=schemas.CityResponse, status_code=201)
+
 def create_city(city: schemas.CityCreate, db: Session = Depends(get_db)):
+
     region = db.query(models.Region).filter(
         models.Region.id_region == city.id_region
     ).first()

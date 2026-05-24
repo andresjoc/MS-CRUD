@@ -5,6 +5,7 @@ from typing import List, Optional
 import DTO.models as models
 import ORM.schemas as schemas
 from DAO.database import get_db
+
 from utils.query_builder import apply_get_query_params
 
 router = APIRouter(
@@ -14,7 +15,9 @@ router = APIRouter(
 
 
 @router.post("/", response_model=schemas.RegionResponse, status_code=201)
+
 def create_region(region: schemas.RegionCreate, db: Session = Depends(get_db)):
+
     country = db.query(models.Country).filter(
         models.Country.id_country == region.id_country
     ).first()
@@ -27,7 +30,9 @@ def create_region(region: schemas.RegionCreate, db: Session = Depends(get_db)):
         id_country=region.id_country
     )
 
+
     db.add(db_region)
+
     db.commit()
     db.refresh(db_region)
 
@@ -38,7 +43,9 @@ def create_region(region: schemas.RegionCreate, db: Session = Depends(get_db)):
 def get_regions(
     query: Optional[str] = Query(
         default=None,
+
         description="Filter records. <miembro>:<valor>"
+
     ),
     limit: Optional[int] = Query(
         default=None,
@@ -90,6 +97,8 @@ def get_region(region_id: int, db: Session = Depends(get_db)):
 
 @router.put("/{region_id}", response_model=schemas.RegionResponse)
 def update_region(region_id: int, data: schemas.RegionCreate, db: Session = Depends(get_db)):
+
+
     region = db.query(models.Region).filter(
         models.Region.id_region == region_id
     ).first()
@@ -121,6 +130,7 @@ def delete_region(region_id: int, db: Session = Depends(get_db)):
 
     if region is None:
         raise HTTPException(status_code=404, detail="Región no encontrada")
+
 
     db.delete(region)
     db.commit()
