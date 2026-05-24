@@ -186,6 +186,21 @@ flowchart LR
     G --> A
 ```
 
+### Historial consolidado para la app
+
+Ademas de los CRUD por entidad, el servicio expone `GET /history/` para que la app Flutter cargue el historial completo del usuario autenticado en una sola consulta logica.
+
+Caracteristicas:
+
+- requiere `Authorization: Bearer <jwt>`
+- usa el `user_id` del token, no parametros enviados por el cliente
+- soporta `limit` y `offset`
+- devuelve sesiones ordenadas por fecha de creacion descendente
+- incluye `compute_status`, mediciones, muestras PPG y alertas de cada sesion
+- permite reconstruir historial despues de cerrar sesion y volver a entrar
+
+La app elimina elementos de historial usando `DELETE /monitoring_sessions/{id_session}`. Esa ruta valida pertenencia del usuario y elimina los datos hijos por las relaciones configuradas en el modelo.
+
 ---
 
 ## 5. Modelo de dominio
@@ -196,7 +211,8 @@ El sistema gira alrededor de un usuario, su contexto geográfico, sus dispositiv
 
 ```mermaid
 erDiagram
-    COUNTRY ||--o{ CITY : has
+    COUNTRY ||--o{ REGION : has
+    REGION ||--o{ CITY : has
     CITY ||--o{ APP_USER : has
     APP_USER ||--o{ HEALTH_RECORD : has
     APP_USER ||--o{ WEARABLE : owns
@@ -228,14 +244,33 @@ Uso:
 - sirve como catálogo geográfico de nivel superior,
 - se relaciona con ciudades.
 
-### 6.2 `City`
+### 6.2 `Region`
 
-Representa una ciudad asociada a un país.
+Representa una región asociada a un país.
+
+Campos:
+
+- `id_region`
+- `id_country`
+- `name`
+
+Uso:
+
+- nivel geográfico intermedio entre país y ciudad.
+
+Relaciones:
+
+- muchas regiones pertenecen a un país,
+- una región puede tener muchas ciudades.
+
+### 6.3 `City`
+
+Representa una ciudad asociada a una región.
 
 Campos:
 
 - `id_city`
-- `id_country`
+- `id_region`
 - `name`
 
 Uso:
@@ -244,10 +279,10 @@ Uso:
 
 Relaciones:
 
-- muchas ciudades pertenecen a un país,
+- muchas ciudades pertenecen a una región,
 - una ciudad puede tener muchos usuarios.
 
-### 6.3 `App_user`
+### 6.4 `App_user`
 
 Representa el usuario principal del sistema.
 
@@ -256,7 +291,6 @@ Campos:
 - `id_user`
 - `id_city`
 - `email`
-- `password_hash`
 - `first_name`
 - `last_name`
 - `birth_date`
@@ -275,7 +309,7 @@ Relaciones:
 - tiene muchos wearables,
 - tiene muchas sesiones de monitoreo.
 
-### 6.4 `HealthRecord`
+### 6.5 `HealthRecord`
 
 Representa un registro de salud del usuario.
 
@@ -291,7 +325,7 @@ Uso:
 
 - almacenar medidas biométricas históricas del usuario.
 
-### 6.5 `WearableModel`
+### 6.6 `WearableModel`
 
 Representa el modelo comercial/técnico del dispositivo.
 
@@ -305,7 +339,7 @@ Uso:
 
 - separar el catálogo de modelos respecto a las unidades físicas concretas.
 
-### 6.6 `Wearable`
+### 6.7 `Wearable`
 
 Representa un dispositivo físico asignado a un usuario.
 
@@ -327,7 +361,7 @@ Relaciones:
 - pertenece a un usuario,
 - referencia un modelo de wearable.
 
-### 6.7 `MonitoringSession`
+### 6.8 `MonitoringSession`
 
 Representa una sesión de monitoreo fisiológico.
 
@@ -354,7 +388,7 @@ Relaciones:
 - contiene alertas,
 - contiene muestras PPG.
 
-### 6.8 `MetricType`
+### 6.9 `MetricType`
 
 Define el tipo de métrica que puede registrarse o derivarse.
 
@@ -371,7 +405,7 @@ Uso:
 
 - describir métricas como frecuencia cardiaca, SpO2, HRV u otras.
 
-### 6.9 `Measurement`
+### 6.10 `Measurement`
 
 Representa una medición asociada a una sesión.
 
@@ -388,7 +422,7 @@ Uso:
 
 - almacenar resultados numéricos producidos durante o después del procesamiento.
 
-### 6.10 `SeverityLevel`
+### 6.11 `SeverityLevel`
 
 Catálogo de niveles de severidad.
 
@@ -402,7 +436,7 @@ Uso:
 
 - clasificar alertas por criticidad.
 
-### 6.11 `Alert`
+### 6.12 `Alert`
 
 Representa una alerta generada sobre una sesión.
 
@@ -419,7 +453,7 @@ Uso:
 
 - registrar eventos clínicos, anómalos o de procesamiento.
 
-### 6.12 `ComputeStatus`
+### 6.13 `ComputeStatus`
 
 Representa el estado de procesamiento computacional de una sesión.
 
@@ -433,7 +467,7 @@ Uso:
 
 - modelar estados como pendiente, procesando, completado, fallido u otros equivalentes.
 
-### 6.13 `PpgSample`
+### 6.14 `PpgSample`
 
 Representa una muestra cruda PPG.
 

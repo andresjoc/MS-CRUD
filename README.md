@@ -111,6 +111,7 @@ En concreto:
 - `/Measurements`
 - `/ppg_samples`
 - `/alerts`
+- `/history`
 
 ---
 
@@ -414,6 +415,7 @@ Actualmente siguen publicos los modulos no protegidos por este cambio:
 - `/Measurements`
 - `/ppg_samples`
 - `/alerts`
+- `/history`
 
 ---
 
@@ -452,6 +454,20 @@ Actualmente siguen publicos los modulos no protegidos por este cambio:
 - `POST /monitoring_sessions`: crea sesion usando el `user_id` del token
 - `PUT /monitoring_sessions/{id}`: solo si la sesion le pertenece
 - `DELETE /monitoring_sessions/{id}`: solo si la sesion le pertenece
+
+### Historial consolidado
+
+- `GET /history/`: devuelve el historial persistido del usuario autenticado, paginado con `limit` y `offset`
+- cada item incluye sesion, estado de computo, mediciones, muestras PPG y alertas relacionadas
+- el endpoint esta pensado para que la app reconstruya el historial completo despues de cerrar sesion, reinstalar o abrir en otro momento
+- la eliminacion del historial desde frontend usa `DELETE /monitoring_sessions/{id_session}`; por las relaciones con cascade se eliminan mediciones, muestras y alertas asociadas a esa sesion
+
+Ejemplo:
+
+```bash
+curl "http://127.0.0.1:8000/history/?limit=100&offset=0" \
+  -H "Authorization: Bearer JWT_AQUI"
+```
 
 ### Mediciones
 
