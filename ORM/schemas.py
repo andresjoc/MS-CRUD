@@ -235,3 +235,39 @@ class PpgSampleResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class HistoryMeasurementResponse(BaseModel):
+    id_measurement: int
+    id_metric_type: int
+    metric_name: str
+    unit: str
+    value: Optional[Decimal] = None
+    error_message: str | None = None
+    recorded_at: datetime
+
+
+class HistoryPpgSampleResponse(BaseModel):
+    ts: int
+    green: int
+    red: Optional[int] = None
+    ir: Optional[int] = None
+
+
+class HistoryAlertResponse(BaseModel):
+    id_alert: int
+    severity_name: str | None = None
+    description: str
+    created_at: datetime
+
+
+class HistorySessionResponse(BaseModel):
+    id_session: int
+    date_time: datetime
+    created_at: datetime
+    updated_at: datetime
+    is_delta_encoded: bool
+    compute_status: str | None = None
+    measurements: list[HistoryMeasurementResponse]
+    samples: list[HistoryPpgSampleResponse]
+    alerts: list[HistoryAlertResponse]
