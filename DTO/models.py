@@ -103,10 +103,9 @@ class Wearable(Base):
     id_wearable_model = Column(Integer, ForeignKey("wearable_model.id_wearable_model"), nullable=False)
     id_user = Column(Integer, ForeignKey("app_user.id_user"), nullable=False)
 
-    mac_address = Column(String(100), unique=True, nullable=False)
-
     wearable_model = relationship("WearableModel", back_populates="wearables")
     user = relationship("App_user", back_populates="wearables")
+    monitoring_sessions = relationship("MonitoringSession", back_populates="wearable")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
@@ -121,6 +120,7 @@ class MonitoringSession(Base):
 
     id_session = Column(Integer, primary_key=True, index=True)
     id_user = Column(Integer, ForeignKey("app_user.id_user"), nullable=False)
+    id_wearable = Column(Integer, ForeignKey("wearable.id_wearable"), nullable=True)
     id_compute_status = Column(
     BigInteger,
     ForeignKey("compute_status.id_compute_status"),
@@ -134,6 +134,7 @@ class MonitoringSession(Base):
     is_delta_encoded = Column(Boolean, nullable=False, default=False)
 
     user = relationship("App_user", back_populates="monitoring_sessions")
+    wearable = relationship("Wearable", back_populates="monitoring_sessions")
 
     measurements = relationship(
         "Measurement",
@@ -153,8 +154,6 @@ class MonitoringSession(Base):
     "PpgSample",
     back_populates="session",
     cascade="all, delete-orphan")
-
-    user = relationship("App_user", back_populates="monitoring_sessions")
 
 
 class MetricType(Base):
