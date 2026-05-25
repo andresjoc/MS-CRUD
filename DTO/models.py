@@ -11,15 +11,18 @@ class Country(Base):
     name = Column(String(100), nullable=False)
 
 
+
 class Region(Base):
     __tablename__ = "region"
 
     id_region = Column(Integer, primary_key=True, index=True, autoincrement=True)
     id_country = Column(Integer, ForeignKey("country.id_country"), nullable=False)
+
     name = Column(String(100), nullable=False)
 
     country = relationship("Country")
     cities = relationship("City", back_populates="region")
+
 
 
 class City(Base):
@@ -30,7 +33,9 @@ class City(Base):
     name = Column(String(100), nullable=False)
 
     users = relationship("App_user", back_populates="city")
+
     region = relationship("Region", back_populates="cities")
+
 
 
 class App_user(Base):
