@@ -98,14 +98,12 @@ class WearableModelResponse(BaseModel):
 
 class WearableCreate(BaseModel):
     id_wearable_model: int
-    mac_address: str
 
 
 class WearableResponse(BaseModel):
     id_wearable: int
     id_user: int
     id_wearable_model: int
-    mac_address: str
     created_at: datetime
     updated_at: datetime
 
@@ -115,6 +113,7 @@ class WearableResponse(BaseModel):
 
 class MonitoringSessionCreate(BaseModel):
     id_compute_status: int
+    id_wearable: Optional[int] = None
     date_time: datetime
     is_delta_encoded: bool = False
 
@@ -122,6 +121,7 @@ class MonitoringSessionCreate(BaseModel):
 class MonitoringSessionResponse(BaseModel):
     id_session: int
     id_user: int
+    id_wearable: Optional[int] = None
     id_compute_status: int
     date_time: datetime
     created_at: datetime
@@ -261,8 +261,21 @@ class HistoryAlertResponse(BaseModel):
     created_at: datetime
 
 
+class HistoryWearableModelResponse(BaseModel):
+    id_wearable_model: int
+    brand: str
+    model: str
+
+
+class HistoryWearableResponse(BaseModel):
+    id_wearable: int
+    id_wearable_model: int
+    model: HistoryWearableModelResponse | None = None
+
+
 class HistorySessionResponse(BaseModel):
     id_session: int
+    id_wearable: Optional[int] = None
     date_time: datetime
     created_at: datetime
     updated_at: datetime
@@ -271,3 +284,4 @@ class HistorySessionResponse(BaseModel):
     measurements: list[HistoryMeasurementResponse]
     samples: list[HistoryPpgSampleResponse]
     alerts: list[HistoryAlertResponse]
+    wearable: HistoryWearableResponse | None = None

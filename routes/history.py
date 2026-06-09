@@ -30,6 +30,9 @@ def get_history(
             joinedload(models.MonitoringSession.alerts).joinedload(
                 models.Alert.severity_level
             ),
+            joinedload(models.MonitoringSession.wearable).joinedload(
+                models.Wearable.wearable_model
+            ),
         )
         .filter(models.MonitoringSession.id_user == current_user.user_id)
         .order_by(models.MonitoringSession.created_at.desc())
@@ -46,6 +49,7 @@ def _build_history_session(
 ) -> schemas.HistorySessionResponse:
     return schemas.HistorySessionResponse(
         id_session=session.id_session,
+        id_wearable=session.id_wearable,
         date_time=session.date_time,
         created_at=session.created_at,
         updated_at=session.updated_at,
@@ -88,4 +92,22 @@ def _build_history_session(
             )
             for alert in sorted(session.alerts, key=lambda item: item.created_at)
         ],
+        wearable=_build_history_wearable(session.wearable),
+    )
+
+
+def _build_history_wearable(
+    wearable: models.Wearable | None,
+) -> schemas.HistoryWearableResponse | None:
+    if wearable is None:
+        return None
+    model = wearable.wearable_model
+    return schemas.HistoryWearableResponse(
+        id_wearable=wearable.id_wearable,
+        id_wearable_model=wearable.id_wearable_model,
+        model=schemas.HistoryWearableModelResponse(
+            id_wearable_model=model.id_wearable_model,
+            brand=model.brand,
+            model=model.model,
+        ) if model else None,
     )

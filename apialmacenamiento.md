@@ -348,7 +348,6 @@ Campos:
 - `id_wearable`
 - `id_wearable_model`
 - `id_user`
-- `mac_address`
 - `created_at`
 - `updated_at`
 

@@ -42,8 +42,18 @@ def create_monitoring_session(
     if not compute_status:
         raise HTTPException(status_code=404, detail="Compute status not found")
 
+    if data.id_wearable is not None:
+        wearable = db.query(models.Wearable).filter(
+            models.Wearable.id_wearable == data.id_wearable
+        ).first()
+        if not wearable:
+            raise HTTPException(status_code=404, detail="Wearable not found")
+        if wearable.id_user != current_user.user_id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+
     session = models.MonitoringSession(
         id_user=current_user.user_id,
+        id_wearable=data.id_wearable,
         id_compute_status=data.id_compute_status,
         date_time=data.date_time,
         is_delta_encoded=data.is_delta_encoded,
@@ -191,7 +201,17 @@ def update_monitoring_session(
     if not compute_status:
         raise HTTPException(status_code=404, detail="Compute status not found")
 
+    if data.id_wearable is not None:
+        wearable = db.query(models.Wearable).filter(
+            models.Wearable.id_wearable == data.id_wearable
+        ).first()
+        if not wearable:
+            raise HTTPException(status_code=404, detail="Wearable not found")
+        if wearable.id_user != current_user.user_id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+
     session.id_user = current_user.user_id
+    session.id_wearable = data.id_wearable
     session.id_compute_status = data.id_compute_status
     session.date_time = data.date_time
     session.is_delta_encoded = data.is_delta_encoded

@@ -41,7 +41,6 @@ def create_wearable(
     wearable = models.Wearable(
         id_user=current_user.user_id,
         id_wearable_model=data.id_wearable_model,
-        mac_address=data.mac_address,
     )
 
     db.add(wearable)
@@ -193,7 +192,6 @@ def update_wearable(
 
     wearable.id_user = current_user.user_id
     wearable.id_wearable_model = data.id_wearable_model
-    wearable.mac_address = data.mac_address
 
     db.commit()
     db.refresh(wearable)
