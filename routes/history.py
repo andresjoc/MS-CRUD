@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 import DTO.models as models
 import ORM.schemas as schemas
@@ -23,11 +23,11 @@ def get_history(
         db.query(models.MonitoringSession)
         .options(
             joinedload(models.MonitoringSession.compute_status),
-            joinedload(models.MonitoringSession.measurements).joinedload(
+            selectinload(models.MonitoringSession.measurements).joinedload(
                 models.Measurement.metric_type
             ),
-            joinedload(models.MonitoringSession.ppg_samples),
-            joinedload(models.MonitoringSession.alerts).joinedload(
+            selectinload(models.MonitoringSession.ppg_samples),
+            selectinload(models.MonitoringSession.alerts).joinedload(
                 models.Alert.severity_level
             ),
             joinedload(models.MonitoringSession.wearable).joinedload(
