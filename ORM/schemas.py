@@ -285,3 +285,42 @@ class HistorySessionResponse(BaseModel):
     samples: list[HistoryPpgSampleResponse]
     alerts: list[HistoryAlertResponse]
     wearable: HistoryWearableResponse | None = None
+
+
+class BatchMeasurementItem(BaseModel):
+    id_metric_type: int
+    value: Decimal
+    error_message: Optional[str] = None
+
+
+class BatchSampleItem(BaseModel):
+    ts: int
+    green: int
+    red: Optional[int] = None
+    ir: Optional[int] = None
+
+
+class BatchAlertItem(BaseModel):
+    id_severity_level: int
+    description: str
+
+
+class MonitoringSessionBatchCreate(BaseModel):
+    id_compute_status: int
+    id_wearable: Optional[int] = None
+    date_time: datetime
+    is_delta_encoded: bool = False
+    samples: list[BatchSampleItem] = []
+    measurements: list[BatchMeasurementItem] = []
+    alert: Optional[BatchAlertItem] = None
+
+
+class MonitoringSessionBatchResponse(BaseModel):
+    id_session: int
+    id_user: int
+    samples_inserted: int
+    measurement_ids: list[int]
+    alert_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True

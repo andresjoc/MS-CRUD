@@ -241,3 +241,94 @@ def delete_monitoring_session(
     db.commit()
 
     return {"message": "Monitoring session deleted"}
+
+
+@router.post("/batch", response_model=schemas.MonitoringSessionBatchResponse)
+def create_monitoring_session_batch(
+    data: schemas.MonitoringSessionBatchCreate,
+    db: Session = Depends(get_db),
+    current_user: TokenUser = Depends(get_current_user_from_token),
+):
+    """Crea sesión, muestras PPG, mediciones y alertas en una sola transacción atómica."""
+    user = db.query(models.App_user).filter(
+        models.App_user.id_user == current_user.user_id
+    ).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    compute_status = db.query(models.ComputeStatus).filter(
+        models.ComputeStatus.id_compute_status == data.id_compute_status
+    ).first()
+
+    if not compute_status:
+        raise HTTPException(status_code=404, detail="Compute status not found")
+
+    if data.id_wearable is not None:
+        wearable = db.query(models.Wearable).filter(
+            models.Wearable.id_wearable == data.id_wearable
+        ).first()
+        if not wearable:
+            raise HTTPException(status_code=404, detail="Wearable not found")
+        if wearable.id_user != current_user.user_id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+
+    # 1. Crear sesión
+    session = models.MonitoringSession(
+        id_user=current_user.user_id,
+        id_wearable=data.id_wearable,
+        id_compute_status=data.id_compute_status,
+        date_time=data.date_time,
+        is_delta_encoded=data.is_delta_encoded,
+    )
+    db.add(session)
+    db.flush()
+
+    # 2. Inserción masiva de muestras PPG
+    if data.samples:
+        samples = [
+            models.PpgSample(
+                id_session=session.id_session,
+                ts=sample.ts,
+                green=sample.green,
+                red=sample.red,
+                ir=sample.ir,
+            )
+            for sample in data.samples
+        ]
+        db.bulk_save_objects(samples)
+
+    # 3. Crear mediciones
+    measurement_ids = []
+    for meas in data.measurements:
+        m = models.Measurement(
+            id_metric_type=meas.id_metric_type,
+            id_session=session.id_session,
+            value=meas.value,
+            error_message=meas.error_message,
+        )
+        db.add(m)
+        db.flush()
+        measurement_ids.append(m.id_measurement)
+
+    # 4. Crear alerta si aplica
+    alert_id = None
+    if data.alert is not None:
+        alert = models.Alert(
+            id_session=session.id_session,
+            id_severity_level=data.alert.id_severity_level,
+            description=data.alert.description,
+        )
+        db.add(alert)
+        db.flush()
+        alert_id = alert.id_alert
+
+    db.commit()
+
+    return schemas.MonitoringSessionBatchResponse(
+        id_session=session.id_session,
+        id_user=current_user.user_id,
+        samples_inserted=len(data.samples),
+        measurement_ids=measurement_ids,
+        alert_id=alert_id,
+    )
