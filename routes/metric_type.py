@@ -1,3 +1,4 @@
+from dependencies.auth_guard import TokenUser, get_current_user_from_token
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -14,7 +15,7 @@ router = APIRouter(
 
 
 @router.post("/", response_model=schemas.MetricTypeResponse)
-def create_metric_type(data: schemas.MetricTypeCreate, db: Session = Depends(get_db)):
+def create_metric_type(data: schemas.MetricTypeCreate, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
     existing_metric = db.query(models.MetricType).filter(
         models.MetricType.name == data.name
     ).first()
@@ -89,7 +90,7 @@ def get_metric_type(id_metric_type: int, db: Session = Depends(get_db)):
 def update_metric_type(
     id_metric_type: int,
     data: schemas.MetricTypeCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db, current_user: TokenUser = Depends(get_current_user_from_token))
 ):
     metric_type = db.query(models.MetricType).filter(
         models.MetricType.id_metric_type == id_metric_type
@@ -111,7 +112,7 @@ def update_metric_type(
 
 
 @router.delete("/{id_metric_type}")
-def delete_metric_type(id_metric_type: int, db: Session = Depends(get_db)):
+def delete_metric_type(id_metric_type: int, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
     metric_type = db.query(models.MetricType).filter(
         models.MetricType.id_metric_type == id_metric_type
     ).first()

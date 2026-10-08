@@ -1,3 +1,4 @@
+from dependencies.auth_guard import TokenUser, get_current_user_from_token
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -15,7 +16,7 @@ router = APIRouter(
 
 @router.post("/", response_model=schemas.CityResponse, status_code=201)
 
-def create_city(city: schemas.CityCreate, db: Session = Depends(get_db)):
+def create_city(city: schemas.CityCreate, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
 
     region = db.query(models.Region).filter(
         models.Region.id_region == city.id_region
@@ -91,7 +92,7 @@ def get_city(city_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{city_id}", response_model=schemas.CityResponse)
-def update_city(city_id: int, data: schemas.CityCreate, db: Session = Depends(get_db)):
+def update_city(city_id: int, data: schemas.CityCreate, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
     city = db.query(models.City).filter(
         models.City.id_city == city_id
     ).first()
@@ -116,7 +117,7 @@ def update_city(city_id: int, data: schemas.CityCreate, db: Session = Depends(ge
 
 
 @router.delete("/{city_id}", status_code=204)
-def delete_city(city_id: int, db: Session = Depends(get_db)):
+def delete_city(city_id: int, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
     city = db.query(models.City).filter(
         models.City.id_city == city_id
     ).first()

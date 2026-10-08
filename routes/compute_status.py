@@ -1,3 +1,4 @@
+from dependencies.auth_guard import TokenUser, get_current_user_from_token
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -14,7 +15,7 @@ router = APIRouter(
 
 
 @router.post("/", response_model=schemas.ComputeStatusResponse)
-def create_status(data: schemas.ComputeStatusCreate, db: Session = Depends(get_db)):
+def create_status(data: schemas.ComputeStatusCreate, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
     status = models.ComputeStatus(**data.dict())
 
     db.add(status)
@@ -70,7 +71,7 @@ def get_statuses(
 def update_status(
     id_compute_status: int,
     data: schemas.ComputeStatusCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db, current_user: TokenUser = Depends(get_current_user_from_token))
 ):
     status = db.query(models.ComputeStatus).filter(
         models.ComputeStatus.id_compute_status == id_compute_status
@@ -89,7 +90,7 @@ def update_status(
 
 
 @router.delete("/{id_status}")
-def delete_status(id_status: int, db: Session = Depends(get_db)):
+def delete_status(id_status: int, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
     status = db.query(models.ComputeStatus).filter(
         models.ComputeStatus.id_compute_status == id_status
     ).first()

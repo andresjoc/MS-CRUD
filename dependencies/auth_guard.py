@@ -40,6 +40,10 @@ def get_current_user_from_token(
     except jwt.InvalidTokenError as exc:
         raise unauthorized from exc
 
+    token_type = payload.get("type")
+    if token_type != "access":
+        raise unauthorized
+
     subject = payload.get("sub")
     email = payload.get("email")
 

@@ -282,7 +282,7 @@ class HistorySessionResponse(BaseModel):
     is_delta_encoded: bool
     compute_status: str | None = None
     measurements: list[HistoryMeasurementResponse]
-    samples: list[HistoryPpgSampleResponse]
+    samples: list[HistoryPpgSampleResponse] = []
     alerts: list[HistoryAlertResponse]
     wearable: HistoryWearableResponse | None = None
 
