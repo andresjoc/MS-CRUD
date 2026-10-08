@@ -90,7 +90,8 @@ def get_metric_type(id_metric_type: int, db: Session = Depends(get_db)):
 def update_metric_type(
     id_metric_type: int,
     data: schemas.MetricTypeCreate,
-    db: Session = Depends(get_db, current_user: TokenUser = Depends(get_current_user_from_token))
+    db: Session = Depends(get_db),
+    current_user: TokenUser = Depends(get_current_user_from_token)
 ):
     metric_type = db.query(models.MetricType).filter(
         models.MetricType.id_metric_type == id_metric_type

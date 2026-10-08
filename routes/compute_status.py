@@ -71,7 +71,8 @@ def get_statuses(
 def update_status(
     id_compute_status: int,
     data: schemas.ComputeStatusCreate,
-    db: Session = Depends(get_db, current_user: TokenUser = Depends(get_current_user_from_token))
+    db: Session = Depends(get_db),
+    current_user: TokenUser = Depends(get_current_user_from_token)
 ):
     status = db.query(models.ComputeStatus).filter(
         models.ComputeStatus.id_compute_status == id_compute_status

@@ -90,7 +90,8 @@ def get_severity(id_severity_level: int, db: Session = Depends(get_db)):
 def update_severity(
     id_severity_level: int,
     data: schemas.SeverityLevelCreate,
-    db: Session = Depends(get_db, current_user: TokenUser = Depends(get_current_user_from_token))
+    db: Session = Depends(get_db),
+    current_user: TokenUser = Depends(get_current_user_from_token)
 ):
     severity = db.query(models.SeverityLevel).filter(
         models.SeverityLevel.id_severity_level == id_severity_level
