@@ -16,7 +16,7 @@ router = APIRouter(
 def get_history(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
-    include_samples: bool = Query(default=False, description="Whether to include raw PPG samples in the response"),
+    include_samples: bool = Query(default=True, description="Whether to include raw PPG samples in the response"),
     db: Session = Depends(get_db),
     current_user: TokenUser = Depends(get_current_user_from_token),
 ):
