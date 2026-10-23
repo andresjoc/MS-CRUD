@@ -15,7 +15,22 @@ from routes import severity_level
 from routes import ppg_sample
 from routes import compute_status
 
+from fastapi.middleware.cors import CORSMiddleware
+from config.environment import CORS_ORIGINS
+
 app = FastAPI(title="Ppg-monitoring-api")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS if CORS_ORIGINS else ["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/")
+def health_check():
+    return {"message": "HeartSense MSCRUD is running"}
 
 app.include_router(alert.router)
 app.include_router(app_user.router)

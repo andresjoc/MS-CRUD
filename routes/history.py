@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 import DTO.models as models
 import ORM.schemas as schemas
@@ -16,24 +16,29 @@ router = APIRouter(
 def get_history(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
+    include_samples: bool = Query(default=True, description="Whether to include raw PPG samples in the response"),
     db: Session = Depends(get_db),
     current_user: TokenUser = Depends(get_current_user_from_token),
 ):
+    query_options = [
+        joinedload(models.MonitoringSession.compute_status),
+        selectinload(models.MonitoringSession.measurements).joinedload(
+            models.Measurement.metric_type
+        ),
+        selectinload(models.MonitoringSession.alerts).joinedload(
+            models.Alert.severity_level
+        ),
+        joinedload(models.MonitoringSession.wearable).joinedload(
+            models.Wearable.wearable_model
+        ),
+    ]
+
+    if include_samples:
+        query_options.append(selectinload(models.MonitoringSession.ppg_samples))
+
     sessions = (
         db.query(models.MonitoringSession)
-        .options(
-            joinedload(models.MonitoringSession.compute_status),
-            joinedload(models.MonitoringSession.measurements).joinedload(
-                models.Measurement.metric_type
-            ),
-            joinedload(models.MonitoringSession.ppg_samples),
-            joinedload(models.MonitoringSession.alerts).joinedload(
-                models.Alert.severity_level
-            ),
-            joinedload(models.MonitoringSession.wearable).joinedload(
-                models.Wearable.wearable_model
-            ),
-        )
+        .options(*query_options)
         .filter(models.MonitoringSession.id_user == current_user.user_id)
         .order_by(models.MonitoringSession.created_at.desc())
         .offset(offset)
@@ -41,11 +46,12 @@ def get_history(
         .all()
     )
 
-    return [_build_history_session(session) for session in sessions]
+    return [_build_history_session(session, include_samples=include_samples) for session in sessions]
 
 
 def _build_history_session(
     session: models.MonitoringSession,
+    include_samples: bool = False,
 ) -> schemas.HistorySessionResponse:
     return schemas.HistorySessionResponse(
         id_session=session.id_session,
@@ -80,7 +86,7 @@ def _build_history_session(
                 ir=sample.ir,
             )
             for sample in sorted(session.ppg_samples, key=lambda item: item.ts)
-        ],
+        ] if include_samples and session.ppg_samples else [],
         alerts=[
             schemas.HistoryAlertResponse(
                 id_alert=alert.id_alert,

@@ -1,3 +1,4 @@
+from dependencies.auth_guard import TokenUser, get_current_user_from_token
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -16,7 +17,7 @@ router = APIRouter(
 
 @router.post("/", response_model=schemas.RegionResponse, status_code=201)
 
-def create_region(region: schemas.RegionCreate, db: Session = Depends(get_db)):
+def create_region(region: schemas.RegionCreate, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
 
     country = db.query(models.Country).filter(
         models.Country.id_country == region.id_country
@@ -96,7 +97,7 @@ def get_region(region_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{region_id}", response_model=schemas.RegionResponse)
-def update_region(region_id: int, data: schemas.RegionCreate, db: Session = Depends(get_db)):
+def update_region(region_id: int, data: schemas.RegionCreate, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
 
 
     region = db.query(models.Region).filter(
@@ -123,7 +124,7 @@ def update_region(region_id: int, data: schemas.RegionCreate, db: Session = Depe
 
 
 @router.delete("/{region_id}", status_code=204)
-def delete_region(region_id: int, db: Session = Depends(get_db)):
+def delete_region(region_id: int, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
     region = db.query(models.Region).filter(
         models.Region.id_region == region_id
     ).first()

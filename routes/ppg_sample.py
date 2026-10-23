@@ -157,8 +157,11 @@ def create_samples_bulk(
     db: Session = Depends(get_db),
     current_user: TokenUser = Depends(get_current_user_from_token),
 ):
+    checked_sessions = set()
     for item in data:
-        _get_owned_session(db, item.id_session, current_user)
+        if item.id_session not in checked_sessions:
+            _get_owned_session(db, item.id_session, current_user)
+            checked_sessions.add(item.id_session)
 
     samples = [models.PpgSample(**item.dict()) for item in data]
 

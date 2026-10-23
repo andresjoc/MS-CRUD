@@ -1,3 +1,4 @@
+from dependencies.auth_guard import TokenUser, get_current_user_from_token
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -14,7 +15,7 @@ router = APIRouter(
 
 
 @router.post("/", response_model=schemas.CountryResponse, status_code=201)
-def create_country(country: schemas.CountryCreate, db: Session = Depends(get_db)):
+def create_country(country: schemas.CountryCreate, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
     db_country = models.Country(
         name=country.name
     )
@@ -81,7 +82,7 @@ def get_country(country_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{country_id}", response_model=schemas.CountryResponse)
-def update_country(country_id: int, data: schemas.CountryCreate, db: Session = Depends(get_db)):
+def update_country(country_id: int, data: schemas.CountryCreate, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
 
     country = db.query(models.Country).filter(
         models.Country.id_country == country_id
@@ -99,7 +100,7 @@ def update_country(country_id: int, data: schemas.CountryCreate, db: Session = D
 
 
 @router.delete("/{country_id}", status_code=204)
-def delete_country(country_id: int, db: Session = Depends(get_db)):
+def delete_country(country_id: int, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
     country = db.query(models.Country).filter(
         models.Country.id_country == country_id
     ).first()

@@ -1,3 +1,4 @@
+from dependencies.auth_guard import TokenUser, get_current_user_from_token
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -14,7 +15,7 @@ router = APIRouter(
 
 
 @router.post("/", response_model=schemas.WearableModelResponse)
-def create_model(data: schemas.WearableModelCreate, db: Session = Depends(get_db)):
+def create_model(data: schemas.WearableModelCreate, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
     model = models.WearableModel(**data.dict())
 
     db.add(model)
@@ -79,7 +80,7 @@ def get_model(model_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{model_id}", response_model=schemas.WearableModelResponse)
-def update_model(model_id: int, data: schemas.WearableModelCreate, db: Session = Depends(get_db)):
+def update_model(model_id: int, data: schemas.WearableModelCreate, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
 
     model = db.query(models.WearableModel).filter(
         models.WearableModel.id_wearable_model == model_id
@@ -98,7 +99,7 @@ def update_model(model_id: int, data: schemas.WearableModelCreate, db: Session =
 
 
 @router.delete("/{model_id}", status_code=204)
-def delete_model(model_id: int, db: Session = Depends(get_db)):
+def delete_model(model_id: int, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
     model = db.query(models.WearableModel).filter(
         models.WearableModel.id_wearable_model == model_id
     ).first()

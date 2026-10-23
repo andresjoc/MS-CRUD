@@ -1,3 +1,4 @@
+from dependencies.auth_guard import TokenUser, get_current_user_from_token
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -14,7 +15,7 @@ router = APIRouter(
 
 
 @router.post("/", response_model=schemas.SeverityLevelResponse)
-def create_severity(data: schemas.SeverityLevelCreate, db: Session = Depends(get_db)):
+def create_severity(data: schemas.SeverityLevelCreate, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
     existing = db.query(models.SeverityLevel).filter(
         models.SeverityLevel.name == data.name
     ).first()
@@ -89,7 +90,8 @@ def get_severity(id_severity_level: int, db: Session = Depends(get_db)):
 def update_severity(
     id_severity_level: int,
     data: schemas.SeverityLevelCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: TokenUser = Depends(get_current_user_from_token)
 ):
     severity = db.query(models.SeverityLevel).filter(
         models.SeverityLevel.id_severity_level == id_severity_level
@@ -108,7 +110,7 @@ def update_severity(
 
 
 @router.delete("/{id_severity_level}")
-def delete_severity(id_severity_level: int, db: Session = Depends(get_db)):
+def delete_severity(id_severity_level: int, db: Session = Depends(get_db), current_user: TokenUser = Depends(get_current_user_from_token)):
     severity = db.query(models.SeverityLevel).filter(
         models.SeverityLevel.id_severity_level == id_severity_level
     ).first()
