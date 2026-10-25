@@ -1,5 +1,6 @@
 #sqlalchemy
-from sqlalchemy import DECIMAL, BigInteger, Boolean, Column, Integer, String, Date, DateTime, ForeignKey
+from sqlalchemy import DECIMAL, BigInteger, Boolean, Column, Integer, String, Date, DateTime, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from DAO.database import Base
@@ -243,3 +244,57 @@ class PpgSample(Base):
     ir = Column(Integer, nullable=True)
 
     session = relationship("MonitoringSession", back_populates="ppg_samples")
+
+
+class ClinicalValidationRecord(Base):
+    __tablename__ = "clinical_validation_record"
+
+    id = Column(String(64), primary_key=True, index=True)
+    evaluator_user_id = Column(Integer, ForeignKey("app_user.id_user"), nullable=True, index=True)
+    id_wearable = Column(Integer, ForeignKey("wearable.id_wearable"), nullable=True)
+
+    patient_code = Column(String(32), nullable=False, index=True)
+    capture_index = Column(Integer, nullable=False, default=1)
+    cohort = Column(String(16), nullable=False, index=True)
+
+    age = Column(Integer, nullable=False)
+    biological_sex = Column(String(16), nullable=False)
+    weight_kg = Column(DECIMAL(5, 2), nullable=False)
+    height_cm = Column(DECIMAL(5, 2), nullable=False)
+    bmi = Column(DECIMAL(4, 1), nullable=False)
+
+    skin_temperature = Column(DECIMAL(4, 2), nullable=False)
+    fitzpatrick_scale = Column(Integer, nullable=False)
+    wrist = Column(String(16), nullable=False)
+
+    has_af_history = Column(Boolean, nullable=False, default=False)
+    af_subtype = Column(String(64), nullable=True)
+    time_since_diagnosis = Column(String(64), nullable=True)
+    comorbidities = Column(JSONB, default=list)
+    cardio_drugs_12h = Column(JSONB, default=list)
+    device_history = Column(JSONB, default=list)
+
+    ecg_rhythm_diagnosis = Column(String(128), nullable=False)
+    ecg_modality = Column(String(128), nullable=False)
+    evaluating_physician = Column(String(128), nullable=True)
+    ecg_taken_at = Column(DateTime(timezone=True), nullable=True)
+    observations = Column(Text, nullable=True)
+
+    ai_af_detected = Column(Boolean, nullable=False)
+    ai_confidence = Column(DECIMAL(5, 4), nullable=False)
+    heart_rate_bpm = Column(DECIMAL(5, 2), nullable=False)
+    hrv_rmssd = Column(DECIMAL(6, 2), nullable=False)
+    hrv_sdnn = Column(DECIMAL(6, 2), nullable=False, default=0.0)
+    is_tachycardic = Column(Boolean, nullable=False, default=False)
+    recorded_beats_count = Column(Integer, nullable=False, default=0)
+    recording_duration_seconds = Column(Integer, nullable=False, default=60)
+    validation_outcome = Column(String(8), nullable=False, index=True)
+
+    raw_ppg_data = Column(JSONB, nullable=True)
+
+    sync_status = Column(String(20), nullable=False, default="SYNCED")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    synced_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    evaluator = relationship("App_user", foreign_keys=[evaluator_user_id])
+    wearable = relationship("Wearable", foreign_keys=[id_wearable])

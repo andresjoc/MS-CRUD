@@ -14,6 +14,7 @@ from routes import alert
 from routes import severity_level
 from routes import ppg_sample
 from routes import compute_status
+from routes import clinical_validation
 
 from fastapi.middleware.cors import CORSMiddleware
 from config.environment import CORS_ORIGINS
@@ -47,3 +48,5 @@ app.include_router(ppg_sample.router)
 app.include_router(severity_level.router)
 app.include_router(wearable.router)
 app.include_router(wearable_model.router)
+
+app.include_router(clinical_validation.router)

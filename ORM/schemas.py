@@ -324,3 +324,55 @@ class MonitoringSessionBatchResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ClinicalRecordSyncItem(BaseModel):
+    id: str
+    patient_code: str
+    capture_index: int = 1
+    cohort: str
+    age: int
+    biological_sex: str
+    weight_kg: Decimal
+    height_cm: Decimal
+    skin_temperature: Decimal
+    fitzpatrick_scale: int
+    wrist: str
+    has_af_history: bool = False
+    af_subtype: Optional[str] = None
+    time_since_diagnosis: Optional[str] = None
+    comorbidities: list[str] = []
+    cardio_drugs_12h: list[str] = []
+    device_history: list[str] = []
+    observations: Optional[str] = None
+    ecg_rhythm_diagnosis: str
+    ecg_modality: str
+    evaluating_physician: Optional[str] = None
+    ecg_taken_at: Optional[datetime] = None
+    ai_af_detected: bool
+    ai_confidence: Decimal
+    heart_rate_bpm: Decimal
+    hrv_rmssd: Decimal
+    hrv_sdnn: Optional[Decimal] = Decimal("0.0")
+    is_tachycardic: bool = False
+    recorded_beats_count: int = 0
+    recording_duration_seconds: int = 60
+    validation_outcome: Optional[str] = None
+    raw_ppg_data: Optional[dict] = None
+    sync_status: Optional[str] = "SYNCED"
+    created_at: Optional[datetime] = None
+
+    class Config:
+        populate_by_name = True
+        extra = "allow"
+
+
+class ClinicalBatchSyncRequest(BaseModel):
+    records: list[dict]
+
+
+class ClinicalBatchSyncResponse(BaseModel):
+    status: str
+    synced_count: int
+    synced_ids: list[str]
+    evaluator_user_id: Optional[int] = None
