@@ -341,6 +341,10 @@ class ClinicalRecordSyncItem(BaseModel):
     has_af_history: bool = False
     af_subtype: Optional[str] = None
     time_since_diagnosis: Optional[str] = None
+    smartwatch_model: Optional[str] = None
+    id_wearable: Optional[int] = None
+    consent_accepted: bool = True
+    institution: Optional[str] = "Hospital Universitario San Rafael"
     comorbidities: list[str] = []
     cardio_drugs_12h: list[str] = []
     device_history: list[str] = []

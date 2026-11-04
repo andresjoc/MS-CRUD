@@ -133,11 +133,21 @@ def batch_upload_clinical_records(
                     validation_outcome = "FN"
 
             raw_ppg = _parse_dict(r.get("raw_ppg_data") or r.get("rawPpgData"))
+            id_wearable_val = r.get("id_wearable") or r.get("idWearable")
+            id_wearable = int(id_wearable_val) if id_wearable_val is not None else None
+            smartwatch_model = r.get("smartwatch_model") or r.get("smartwatchModel") or "Pinetime Dev Kit"
+            consent_accepted_raw = r.get("consent_accepted") if r.get("consent_accepted") is not None else r.get("consentAccepted", True)
+            consent_accepted = bool(consent_accepted_raw)
+            institution = r.get("institution") or "Hospital Universitario San Rafael"
             created_at = _parse_datetime(r.get("created_at") or r.get("createdAt")) or datetime.utcnow()
 
             record_dict = {
                 "id": rec_id,
                 "evaluator_user_id": current_user.user_id,
+                "id_wearable": id_wearable,
+                "smartwatch_model": smartwatch_model,
+                "consent_accepted": consent_accepted,
+                "institution": institution,
                 "patient_code": patient_code,
                 "capture_index": capture_index,
                 "cohort": cohort,
@@ -181,6 +191,27 @@ def batch_upload_clinical_records(
                 index_elements=[models.ClinicalValidationRecord.id],
                 set_={
                     "evaluator_user_id": record_dict["evaluator_user_id"],
+                    "id_wearable": record_dict["id_wearable"],
+                    "smartwatch_model": record_dict["smartwatch_model"],
+                    "consent_accepted": record_dict["consent_accepted"],
+                    "institution": record_dict["institution"],
+                    "patient_code": record_dict["patient_code"],
+                    "capture_index": record_dict["capture_index"],
+                    "cohort": record_dict["cohort"],
+                    "age": record_dict["age"],
+                    "biological_sex": record_dict["biological_sex"],
+                    "weight_kg": record_dict["weight_kg"],
+                    "height_cm": record_dict["height_cm"],
+                    "bmi": record_dict["bmi"],
+                    "skin_temperature": record_dict["skin_temperature"],
+                    "fitzpatrick_scale": record_dict["fitzpatrick_scale"],
+                    "wrist": record_dict["wrist"],
+                    "has_af_history": record_dict["has_af_history"],
+                    "af_subtype": record_dict["af_subtype"],
+                    "time_since_diagnosis": record_dict["time_since_diagnosis"],
+                    "comorbidities": record_dict["comorbidities"],
+                    "cardio_drugs_12h": record_dict["cardio_drugs_12h"],
+                    "device_history": record_dict["device_history"],
                     "ecg_rhythm_diagnosis": record_dict["ecg_rhythm_diagnosis"],
                     "ecg_modality": record_dict["ecg_modality"],
                     "evaluating_physician": record_dict["evaluating_physician"],
@@ -241,6 +272,12 @@ def list_clinical_records(
             {
                 "id": r.id,
                 "evaluator_user_id": r.evaluator_user_id,
+                "id_wearable": r.id_wearable,
+                "smartwatch_model": r.smartwatch_model,
+                "smartwatchModel": r.smartwatch_model,
+                "consent_accepted": r.consent_accepted if r.consent_accepted is not None else True,
+                "consentAccepted": r.consent_accepted if r.consent_accepted is not None else True,
+                "institution": r.institution,
                 "patient_code": r.patient_code,
                 "capture_index": r.capture_index,
                 "cohort": r.cohort,
