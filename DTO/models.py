@@ -291,6 +291,7 @@ class ClinicalValidationRecord(Base):
     heart_rate_bpm = Column(DECIMAL(5, 2), nullable=False)
     hrv_rmssd = Column(DECIMAL(6, 2), nullable=False)
     hrv_sdnn = Column(DECIMAL(6, 2), nullable=False, default=0.0)
+    blood_oxygen_level = Column(DECIMAL(4, 1), nullable=True)
     is_tachycardic = Column(Boolean, nullable=False, default=False)
     recorded_beats_count = Column(Integer, nullable=False, default=0)
     recording_duration_seconds = Column(Integer, nullable=False, default=60)

@@ -53,6 +53,7 @@ def test_batch_upload_successful_with_full_ppg_signal():
         "heartRateBpm": 84.5,
         "hrvRmssd": 72.3,
         "hrvSdnn": 68.1,
+        "bloodOxygenLevel": 98.4,
         "isTachycardic": False,
         "recordedBeatsCount": 82,
         "recordingDurationSeconds": 60,
@@ -102,6 +103,7 @@ def test_batch_upload_is_idempotent():
         "aiConfidence": 0.98,
         "heartRateBpm": 85.0,
         "hrvRmssd": 75.0,
+        "bloodOxygenLevel": 98.4,
     }
 
     response = client.post(
@@ -129,3 +131,5 @@ def test_list_clinical_records_filtering():
     assert data["total"] >= 1
     codes = [r["patient_code"] for r in data["records"]]
     assert "HS-AF-999" in codes
+    rec_999 = next(r for r in data["records"] if r["patient_code"] == "HS-AF-999")
+    assert rec_999["blood_oxygen_level"] == 98.4

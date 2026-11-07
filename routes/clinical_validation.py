@@ -116,6 +116,8 @@ def batch_upload_clinical_records(
             heart_rate_bpm = Decimal(str(r.get("heart_rate_bpm") or r.get("heartRateBpm") or 0.0))
             hrv_rmssd = Decimal(str(r.get("hrv_rmssd") or r.get("hrvRmssd") or 0.0))
             hrv_sdnn = Decimal(str(r.get("hrv_sdnn") or r.get("hrvSdnn") or 0.0))
+            raw_spo2 = r.get("blood_oxygen_level") if "blood_oxygen_level" in r else (r.get("bloodOxygenLevel") if "bloodOxygenLevel" in r else r.get("spo2"))
+            blood_oxygen_level = Decimal(str(raw_spo2)) if raw_spo2 is not None and str(raw_spo2).strip() != "" and str(raw_spo2).strip().lower() != "null" else None
             is_tachycardic = bool(r.get("is_tachycardic") if "is_tachycardic" in r else r.get("isTachycardic", False))
             recorded_beats = int(r.get("recorded_beats_count") or r.get("recordedBeatsCount") or 0)
             duration_sec = int(r.get("recording_duration_seconds") or r.get("recordingDurationSeconds") or 60)
@@ -175,6 +177,7 @@ def batch_upload_clinical_records(
                 "heart_rate_bpm": heart_rate_bpm,
                 "hrv_rmssd": hrv_rmssd,
                 "hrv_sdnn": hrv_sdnn,
+                "blood_oxygen_level": blood_oxygen_level,
                 "is_tachycardic": is_tachycardic,
                 "recorded_beats_count": recorded_beats,
                 "recording_duration_seconds": duration_sec,
@@ -215,6 +218,7 @@ def batch_upload_clinical_records(
                     "ecg_rhythm_diagnosis": record_dict["ecg_rhythm_diagnosis"],
                     "ecg_modality": record_dict["ecg_modality"],
                     "evaluating_physician": record_dict["evaluating_physician"],
+                    "blood_oxygen_level": record_dict["blood_oxygen_level"],
                     "observations": record_dict["observations"],
                     "validation_outcome": record_dict["validation_outcome"],
                     "sync_status": "SYNCED",
@@ -305,6 +309,9 @@ def list_clinical_records(
                 "heart_rate_bpm": float(r.heart_rate_bpm) if r.heart_rate_bpm is not None else 0.0,
                 "hrv_rmssd": float(r.hrv_rmssd) if r.hrv_rmssd is not None else 0.0,
                 "hrv_sdnn": float(r.hrv_sdnn) if r.hrv_sdnn is not None else 0.0,
+                "blood_oxygen_level": float(r.blood_oxygen_level) if r.blood_oxygen_level is not None else None,
+                "bloodOxygenLevel": float(r.blood_oxygen_level) if r.blood_oxygen_level is not None else None,
+                "spo2": float(r.blood_oxygen_level) if r.blood_oxygen_level is not None else None,
                 "is_tachycardic": r.is_tachycardic,
                 "recorded_beats_count": r.recorded_beats_count,
                 "recording_duration_seconds": r.recording_duration_seconds,

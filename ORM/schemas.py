@@ -358,6 +358,7 @@ class ClinicalRecordSyncItem(BaseModel):
     heart_rate_bpm: Decimal
     hrv_rmssd: Decimal
     hrv_sdnn: Optional[Decimal] = Decimal("0.0")
+    blood_oxygen_level: Optional[Decimal] = None
     is_tachycardic: bool = False
     recorded_beats_count: int = 0
     recording_duration_seconds: int = 60
