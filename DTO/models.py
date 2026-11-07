@@ -122,9 +122,6 @@ class MonitoringSession(Base):
     id_session = Column(Integer, primary_key=True, index=True)
     id_user = Column(Integer, ForeignKey("app_user.id_user"), nullable=False)
     id_wearable = Column(Integer, ForeignKey("wearable.id_wearable"), nullable=True)
-    smartwatch_model = Column(String(64), nullable=True)
-    consent_accepted = Column(Boolean, nullable=False, default=True)
-    institution = Column(String(128), nullable=True, default="Hospital Universitario San Rafael")
     id_compute_status = Column(
     BigInteger,
     ForeignKey("compute_status.id_compute_status"),
