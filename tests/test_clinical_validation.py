@@ -54,6 +54,10 @@ def test_batch_upload_successful_with_full_ppg_signal():
         "hrvRmssd": 72.3,
         "hrvSdnn": 68.1,
         "bloodOxygenLevel": 98.4,
+        "doctorHeartRateBpm": 82.0,
+        "doctorBloodOxygenLevel": 97.5,
+        "doctorHrvRmssd": 69.4,
+        "doctorMetricsObservations": "TA 120/80 mmHg, FR 16 rpm",
         "isTachycardic": False,
         "recordedBeatsCount": 82,
         "recordingDurationSeconds": 60,
@@ -104,6 +108,10 @@ def test_batch_upload_is_idempotent():
         "heartRateBpm": 85.0,
         "hrvRmssd": 75.0,
         "bloodOxygenLevel": 98.4,
+        "doctorHeartRateBpm": 82.0,
+        "doctorBloodOxygenLevel": 97.5,
+        "doctorHrvRmssd": 69.4,
+        "doctorMetricsObservations": "TA 120/80 mmHg, FR 16 rpm",
     }
 
     response = client.post(
@@ -133,3 +141,7 @@ def test_list_clinical_records_filtering():
     assert "HS-AF-999" in codes
     rec_999 = next(r for r in data["records"] if r["patient_code"] == "HS-AF-999")
     assert rec_999["blood_oxygen_level"] == 98.4
+    assert rec_999["doctor_heart_rate_bpm"] == 82.0
+    assert rec_999["doctor_blood_oxygen_level"] == 97.5
+    assert rec_999["doctor_hrv_rmssd"] == 69.4
+    assert rec_999["doctor_metrics_observations"] == "TA 120/80 mmHg, FR 16 rpm"

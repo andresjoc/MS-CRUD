@@ -363,6 +363,10 @@ class ClinicalRecordSyncItem(BaseModel):
     recorded_beats_count: int = 0
     recording_duration_seconds: int = 60
     validation_outcome: Optional[str] = None
+    doctor_heart_rate_bpm: Optional[Decimal] = None
+    doctor_blood_oxygen_level: Optional[Decimal] = None
+    doctor_hrv_rmssd: Optional[Decimal] = None
+    doctor_metrics_observations: Optional[str] = None
     raw_ppg_data: Optional[dict] = None
     sync_status: Optional[str] = "SYNCED"
     created_at: Optional[datetime] = None

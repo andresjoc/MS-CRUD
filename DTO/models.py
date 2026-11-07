@@ -293,6 +293,10 @@ class ClinicalValidationRecord(Base):
     recorded_beats_count = Column(Integer, nullable=False, default=0)
     recording_duration_seconds = Column(Integer, nullable=False, default=60)
     validation_outcome = Column(String(8), nullable=False, index=True)
+    doctor_heart_rate_bpm = Column(DECIMAL(5, 2), nullable=True)
+    doctor_blood_oxygen_level = Column(DECIMAL(4, 1), nullable=True)
+    doctor_hrv_rmssd = Column(DECIMAL(6, 2), nullable=True)
+    doctor_metrics_observations = Column(Text, nullable=True)
 
     raw_ppg_data = Column(JSONB, nullable=True)
 

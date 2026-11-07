@@ -122,6 +122,18 @@ def batch_upload_clinical_records(
             recorded_beats = int(r.get("recorded_beats_count") or r.get("recordedBeatsCount") or 0)
             duration_sec = int(r.get("recording_duration_seconds") or r.get("recordingDurationSeconds") or 60)
 
+            # Métricas de Referencia Clínicas del Médico (Ground Truth)
+            raw_doc_hr = r.get("doctor_heart_rate_bpm") if "doctor_heart_rate_bpm" in r else r.get("doctorHeartRateBpm")
+            doctor_heart_rate_bpm = Decimal(str(raw_doc_hr)) if raw_doc_hr is not None and str(raw_doc_hr).strip() != "" and str(raw_doc_hr).strip().lower() != "null" else None
+
+            raw_doc_spo2 = r.get("doctor_blood_oxygen_level") if "doctor_blood_oxygen_level" in r else r.get("doctorBloodOxygenLevel")
+            doctor_blood_oxygen_level = Decimal(str(raw_doc_spo2)) if raw_doc_spo2 is not None and str(raw_doc_spo2).strip() != "" and str(raw_doc_spo2).strip().lower() != "null" else None
+
+            raw_doc_hrv = r.get("doctor_hrv_rmssd") if "doctor_hrv_rmssd" in r else r.get("doctorHrvRmssd")
+            doctor_hrv_rmssd = Decimal(str(raw_doc_hrv)) if raw_doc_hrv is not None and str(raw_doc_hrv).strip() != "" and str(raw_doc_hrv).strip().lower() != "null" else None
+
+            doctor_metrics_observations = r.get("doctor_metrics_observations") or r.get("doctorMetricsObservations")
+
             validation_outcome = r.get("validation_outcome") or r.get("validationOutcome")
             if not validation_outcome:
                 ecg_is_af = "fibrila" in ecg_rhythm.lower() or "af" in ecg_rhythm.lower()
@@ -135,6 +147,15 @@ def batch_upload_clinical_records(
                     validation_outcome = "FN"
 
             raw_ppg = _parse_dict(r.get("raw_ppg_data") or r.get("rawPpgData"))
+            if isinstance(raw_ppg, dict):
+                raw_ppg.pop("bloodOxygenLevel", None)
+                raw_ppg.pop("spo2", None)
+                for win_key in ["inferenceWindows", "windows"]:
+                    if win_key in raw_ppg and isinstance(raw_ppg[win_key], list):
+                        for w in raw_ppg[win_key]:
+                            if isinstance(w, dict):
+                                w.pop("bloodOxygenLevel", None)
+                                w.pop("spo2", None)
             id_wearable_val = r.get("id_wearable") or r.get("idWearable")
             id_wearable = int(id_wearable_val) if id_wearable_val is not None else None
             smartwatch_model = r.get("smartwatch_model") or r.get("smartwatchModel") or "Pinetime Dev Kit"
@@ -182,6 +203,10 @@ def batch_upload_clinical_records(
                 "recorded_beats_count": recorded_beats,
                 "recording_duration_seconds": duration_sec,
                 "validation_outcome": validation_outcome,
+                "doctor_heart_rate_bpm": doctor_heart_rate_bpm,
+                "doctor_blood_oxygen_level": doctor_blood_oxygen_level,
+                "doctor_hrv_rmssd": doctor_hrv_rmssd,
+                "doctor_metrics_observations": doctor_metrics_observations,
                 "raw_ppg_data": raw_ppg,
                 "sync_status": "SYNCED",
                 "created_at": created_at,
@@ -221,6 +246,10 @@ def batch_upload_clinical_records(
                     "blood_oxygen_level": record_dict["blood_oxygen_level"],
                     "observations": record_dict["observations"],
                     "validation_outcome": record_dict["validation_outcome"],
+                    "doctor_heart_rate_bpm": record_dict["doctor_heart_rate_bpm"],
+                    "doctor_blood_oxygen_level": record_dict["doctor_blood_oxygen_level"],
+                    "doctor_hrv_rmssd": record_dict["doctor_hrv_rmssd"],
+                    "doctor_metrics_observations": record_dict["doctor_metrics_observations"],
                     "sync_status": "SYNCED",
                     "synced_at": record_dict["synced_at"],
                 }
@@ -317,6 +346,14 @@ def list_clinical_records(
                 "recording_duration_seconds": r.recording_duration_seconds,
                 "raw_ppg_data": r.raw_ppg_data,
                 "validation_outcome": r.validation_outcome,
+                "doctor_heart_rate_bpm": float(r.doctor_heart_rate_bpm) if r.doctor_heart_rate_bpm is not None else None,
+                "doctorHeartRateBpm": float(r.doctor_heart_rate_bpm) if r.doctor_heart_rate_bpm is not None else None,
+                "doctor_blood_oxygen_level": float(r.doctor_blood_oxygen_level) if r.doctor_blood_oxygen_level is not None else None,
+                "doctorBloodOxygenLevel": float(r.doctor_blood_oxygen_level) if r.doctor_blood_oxygen_level is not None else None,
+                "doctor_hrv_rmssd": float(r.doctor_hrv_rmssd) if r.doctor_hrv_rmssd is not None else None,
+                "doctorHrvRmssd": float(r.doctor_hrv_rmssd) if r.doctor_hrv_rmssd is not None else None,
+                "doctor_metrics_observations": r.doctor_metrics_observations,
+                "doctorMetricsObservations": r.doctor_metrics_observations,
                 "sync_status": "SYNCED",
                 "created_at": r.created_at.isoformat() if r.created_at else None,
                 "synced_at": r.synced_at.isoformat() if r.synced_at else None,
