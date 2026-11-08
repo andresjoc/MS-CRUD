@@ -1,548 +1,235 @@
-# MS CRUD - PPG Monitoring Storage API
+# 🗄️ Auricular Sense - MS CRUD (PPG Monitoring Storage API)
 
-## Descripcion
-
-Este repositorio corresponde al microservicio CRUD de almacenamiento del sistema PPG. Su responsabilidad es persistir y exponer datos de negocio relacionados con:
-
-- usuarios,
-- ubicacion geografica,
-- historial de salud,
-- wearables,
-- sesiones de monitoreo,
-- muestras PPG,
-- metricas,
-- alertas,
-- estados de computo.
-
-Este servicio no autentica usuarios ni valida contrasenas. La autenticacion ocurre en `ms-auth`, que emite un JWT. Luego este servicio valida ese JWT localmente para autorizar acceso a recursos protegidos.
-
-La ubicacion geografica sigue la jerarquia:
-
-- `country`
-- `region`
-- `city`
-
-`APP_USER` persiste solo `id_city`; la region y el pais se obtienen por relacion.
+Microservicio central de persistencia y exposición de datos para el ecosistema **Auricular Sense**. Responsable del almacenamiento, consulta y control de acceso basado en roles/propietario para usuarios, dispositivos *wearables*, sesiones de monitoreo, muestras biomédicas PPG, métricas fisiológicas y alertas cardíacas.
 
 ---
 
-## Modelo de datos actualizado
+## 📋 Responsabilidades y Dominio
 
-La base de datos sigue siendo unica, pero ahora separa identidad y credenciales:
+- **Persistencia de Dominio:** Gestión de tablas relacionales de usuarios (`app_user`), antropometría (`health_record`), catálogo geográfico (`country`, `region`, `city`), dispositivos (`wearable`, `wearable_model`) y eventos de salud.
+- **Ingesta de Datos Biomédicos de Alta Escala:**
+  - Ingesta en lote de sesiones completas (`POST /monitoring_sessions/batch`) proveniente de la cola offline de la app móvil.
+  - Almacenamiento optimizado de series temporales de muestras fotopletismográficas (`ppg_sample`).
+- **Historial Consolidado:** Endpoint unificado (`GET /history/`) para que la app reconstruya el historial tras reinstalación o inicio de sesión.
+- **Protocolo de Validación Clínica:** Endpoints dedicados (`/clinical_validation/`) para el protocolo de investigación hospitalaria con trazabilidad de ECG patrón de oro.
+- **Control de Acceso por Propietario (JWT):** Valida localmente el token emitido por `ms-auth`. Un usuario **solo puede leer o modificar sus propios datos**. Cualquier intento de acceder a recursos ajenos responde `403 Forbidden`.
 
-- `APP_USER`: datos de dominio del usuario
-- `AUTH_CREDENTIAL`: credenciales de autenticacion
-
-### Que usa este servicio
-
-MS CRUD solo trabaja con `APP_USER` y con las tablas de dominio relacionadas.
-
-Para usuarios, este servicio solo maneja:
-
-- `email`
-- `first_name`
-- `last_name`
-- `birth_date`
-- `id_city` (opcional al registrarse; se puede completar despues)
-
-### Que no usa este servicio
-
-MS CRUD:
-
-- no lee `AUTH_CREDENTIAL`
-- no escribe `AUTH_CREDENTIAL`
-- no guarda `password`
-- no guarda `password_hash`
-- no valida credenciales
-
-La autenticacion se realiza exclusivamente en `ms-auth`.
+> [!IMPORTANT]
+> `ms-crud` **no autentica usuarios ni almacena contraseñas**. No accede a `auth_credential`. La identidad se extrae y valida de forma estricta desde el claim `sub` del Bearer JWT emitido por `ms-auth`.
 
 ---
 
-## Cambio nuevo: integracion JWT y control por usuario
+## 🏛️ Modelo de Datos y Jerarquías
 
-Se anadio autenticacion basada en Bearer JWT para proteger recursos sensibles.
+```mermaid
+erDiagram
+    APP_USER ||--o{ WEARABLE : "posee"
+    APP_USER ||--o{ MONITORING_SESSION : "registra"
+    WEARABLE ||--o{ MONITORING_SESSION : "capturada con"
+    MONITORING_SESSION ||--o{ MEASUREMENT : "contiene metricas"
+    MONITORING_SESSION ||--o{ PPG_SAMPLE : "contiene senal cruda"
+    MONITORING_SESSION ||--o{ ALERT : "genera"
 
-### Modulo agregado
+    MONITORING_SESSION {
+        int id_session PK
+        int id_user FK
+        int id_wearable FK
+        datetime start_time
+        datetime end_time
+        string status
+    }
 
-- `dependencies/auth_guard.py`
+    MEASUREMENT {
+        int id_measurement PK
+        int id_session FK
+        int id_metric_type FK
+        decimal value
+        datetime timestamp
+    }
 
-Ese modulo:
-
-- lee `Authorization: Bearer <token>`
-- valida firma con `JWT_SECRET_KEY`
-- valida algoritmo con `JWT_ALGORITHM`
-- valida expiracion del token
-- extrae `user_id` desde `sub`
-- extrae `email`
-- devuelve el usuario autenticado desde el token
-- responde `401` si el token no existe, es invalido o expiro
-
-### Regla base de autorizacion
-
-MS CRUD solo confia en:
-
-- `user_id` obtenido del JWT
-
-No confia en `id_user` enviado por request.
-
-En todas las operaciones protegidas, el `user_id` efectivo sale del token.
-
----
-
-## Endpoints protegidos
-
-Quedaron protegidas las rutas de:
-
-- usuarios
-- registros de salud
-- wearables
-- sesiones de monitoreo
-- mediciones
-- muestras PPG
-- alertas
-
-En concreto:
-
-- `/App_users`
-- `/health-records`
-- `/wearables`
-- `/monitoring_sessions`
-- `/Measurements`
-- `/ppg_samples`
-- `/alerts`
-- `/history`
-
----
-
-## Reglas de acceso aplicadas
-
-El servicio ahora aplica control de acceso por propietario:
-
-- un usuario solo puede ver y modificar su propio perfil en `APP_USER`
-- un usuario solo puede ver sus propios registros de salud
-- un usuario solo puede ver sus propios wearables
-- un usuario solo puede ver sus propias sesiones
-- un usuario solo puede ver mediciones de sus propias sesiones
-- un usuario solo puede ver alertas de sus propias sesiones
-- un usuario solo puede ver muestras PPG de sus propias sesiones
-
-Si el recurso existe pero pertenece a otro usuario, la API responde `403 Forbidden`.
-
-Si no hay token o el token es invalido o expiro, la API responde `401 Unauthorized`.
-
----
-
-## Relacion con los otros microservicios
-
-### `ms-auth`
-
-`ms-auth` es el servicio que:
-
-- registra usuarios
-- autentica credenciales
-- crea `APP_USER`
-- crea y gestiona `AUTH_CREDENTIAL`
-- emite JWT
-
-El JWT esperado por este servicio debe incluir al menos:
-
-- `sub`: `user_id`
-- `email`
-- `exp`
-
-### `ms-mid`
-
-Si `ms-mid` llama a este servicio en nombre de un usuario, debe reenviar el mismo token:
-
-```http
-Authorization: Bearer <token>
+    PPG_SAMPLE {
+        bigint id_sample PK
+        int id_session FK
+        datetime timestamp
+        int green_value
+        int red_value
+        int ir_value
+    }
 ```
 
-MS CRUD no consulta a `ms-auth` en cada request. La validacion del JWT es local y desacoplada.
+---
+
+## ⚙️ Prerrequisitos de Entorno
+
+- **Python:** Versión `3.10` o superior (compatible con Python 3.11, 3.12 y 3.13).
+- **Base de Datos:** Instancia de **PostgreSQL 14+** (local) o **Neon Serverless PostgreSQL**. Compatible opcionalmente con **TimescaleDB** para compresión de hipertablas en `ppg_sample`.
+- **Esquema Inicial:** Base de datos creada con las tablas de `BD/ppg-database-design/sql/`.
 
 ---
 
-## Requisitos
+## 🚀 Guía de Instalación y Replicación Paso a Paso
 
-- Python 3.8+
-- PostgreSQL
-
-Dependencias principales:
-
-- FastAPI
-- Uvicorn
-- SQLAlchemy
-- psycopg2-binary
-- Pydantic
-- python-dotenv
-- PyJWT
-
----
-
-## Variables de entorno
-
-Este servicio necesita:
-
-```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/PPG_DB
-JWT_SECRET_KEY=replace-with-the-shared-jwt-secret
-JWT_ALGORITHM=HS256
-```
-
-### Descripcion
-
-- `DATABASE_URL`: cadena de conexion a PostgreSQL del servicio CRUD
-- `JWT_SECRET_KEY`: secreto compartido con `ms-auth` para validar JWT
-- `JWT_ALGORITHM`: algoritmo de firma del token; el valor esperado es `HS256`
-
-Usa [.env.example](C:\Users\andre\Downloads\Noveno%20Semestre\LibroSUE\API\ppg-monitoring-api\.env.example) como base para crear tu `.env`.
-
----
-
-## Instalacion
-
-### 1. Crear entorno virtual
-
-En Windows:
+### 1. Clonar y Acceder al Directorio
 
 ```bash
-python -m venv .venv
-.venv\Scripts\activate
+cd "Backend/MSCRUD/ppg-monitoring-api"
 ```
 
-En Linux/Mac:
+### 2. Crear y Activar el Entorno Virtual
 
-```bash
+En **Windows (PowerShell)**:
+```powershell
 python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+En **Linux / macOS**:
+```bash
+python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 2. Instalar dependencias
+### 3. Instalar Dependencias
 
 ```bash
-pip install -r requeriment.txt
+pip install -r requirements.txt
 ```
 
-### 3. Crear el archivo `.env`
+### 4. Configurar Variables de Entorno
 
-Copia `.env.example` a `.env` y ajusta valores reales:
+Copia el archivo de plantilla `.env.example` a `.env`:
+
+En **Windows (PowerShell)**:
+```powershell
+Copy-Item .env.example .env
+```
+
+En **Linux / macOS**:
+```bash
+cp .env.example .env
+```
+
+Configura los parámetros en `.env`:
 
 ```env
+# Cadena de conexión a PostgreSQL (misma base o esquema compartido con ms-auth)
 DATABASE_URL=postgresql://usuario:password@localhost:5432/PPG_DB
-JWT_SECRET_KEY=the-same-secret-used-by-ms-auth
+
+# Clave y algoritmo simétrico idénticos a los configurados en ms-auth
+JWT_SECRET_KEY=clave-secreta-super-segura-y-larga-para-produccion
 JWT_ALGORITHM=HS256
 ```
 
-### 4. Verificar la base de datos
+---
 
-Este proyecto no incluye migraciones formales. Debes tener:
+## 🧪 Suite de Pruebas Automatizadas
 
-- PostgreSQL ejecutandose
-- la base de datos creada
-- las tablas compatibles con los modelos definidos en `DTO/models.py`
+El microservicio cuenta con pruebas automáticas con base de datos SQLite en memoria:
 
-Importante:
+```bash
+python -m pytest tests/
+```
 
-- `APP_USER` ya no debe contener `password_hash`
-- `AUTH_CREDENTIAL` existe en la misma base, pero este servicio no la toca
+Salida esperada:
+```text
+======================= 13 passed in 5.33s =======================
+```
+
+Las pruebas cubren:
+* Validación estricta del guardia JWT (`dependencies/auth_guard.py`).
+* Control de acceso y aislamiento por propietario (`tests/test_crud_api.py`).
+* Idempotencia y transaccionalidad de subidas en lote (`tests/test_clinical_validation.py`).
 
 ---
 
-## Como ejecutar el servicio
+## 🏃 Ejecución del Microservicio
 
-Con el entorno virtual activo y el `.env` configurado:
+Con el entorno virtual activo:
 
 ```bash
-uvicorn main:app --reload
+uvicorn main:app --reload --port 8000
 ```
 
-Por defecto la API quedara disponible en:
-
-- [http://127.0.0.1:8000](http://127.0.0.1:8000)
-
-Documentacion automatica:
-
-- Swagger UI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-- ReDoc: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+El servicio iniciará en:
+* **API Base:** [http://127.0.0.1:8000](http://127.0.0.1:8000)
+* **Documentación Interactiva (Swagger UI):** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+* **Documentación Alternativa (ReDoc):** [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
 
 ---
 
-## Como probar la autenticacion
+## 📡 Endpoints Clave del Sistema
 
-## 1. Obtener un token desde `ms-auth`
+### 1. Ingesta de Sesión Completa en Lote (`POST /monitoring_sessions/batch`)
+Utilizado por la cola offline de la aplicación Flutter (`OfflineSyncQueueManager`). Permite subir en una única transacción atómica:
+* La sesión de monitoreo (`monitoring_session`).
+* Las métricas calculadas (FC, SpO2, HRV RMSSD, etc. en `measurement`).
+* El vector completo de muestras de señal fotopletismográfica (`ppg_sample`).
+* Alertas de fibrilación auricular o taquicardia generadas en el dispositivo (`alert`).
 
-Ejemplo de login contra `ms-auth`:
-
-```bash
-curl -X POST http://127.0.0.1:8002/auth/login \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"ana@example.com\",\"password\":\"Secret123!\"}"
+**Header Requerido:**
+```http
+Authorization: Bearer <JWT_DE_MS_AUTH>
 ```
 
-Respuesta esperada:
-
+**Payload:**
 ```json
 {
-  "access_token": "JWT_AQUI",
-  "token_type": "bearer",
-  "expires_in": 3600
+  "id_wearable": 1,
+  "start_time": "2026-11-07T14:30:00Z",
+  "end_time": "2026-11-07T14:31:00Z",
+  "measurements": [
+    { "id_metric_type": 1, "value": 72.0, "timestamp": "2026-11-07T14:30:30Z" },
+    { "id_metric_type": 2, "value": 98.0, "timestamp": "2026-11-07T14:30:30Z" },
+    { "id_metric_type": 3, "value": 42.5, "timestamp": "2026-11-07T14:30:30Z" }
+  ],
+  "samples": [
+    { "timestamp": "2026-11-07T14:30:00.000Z", "green_value": 2048, "red_value": 0, "ir_value": 0 }
+  ],
+  "alert": {
+    "id_severity": 1,
+    "message": "Ritmo sinusal normal",
+    "timestamp": "2026-11-07T14:31:00Z"
+  }
 }
 ```
 
-## 2. Consumir endpoints protegidos del CRUD
+---
 
-Perfil del usuario autenticado:
-
-```bash
-curl http://127.0.0.1:8000/App_users/1 \
-  -H "Authorization: Bearer JWT_AQUI"
-```
-
-Registros de salud:
+### 2. Historial Paginado del Usuario (`GET /history/`)
+Devuelve el listado consolidado de mediciones del usuario autenticado para visualización en pantalla o generación de reportes clínicos PDF.
 
 ```bash
-curl http://127.0.0.1:8000/health-records \
-  -H "Authorization: Bearer JWT_AQUI"
-```
-
-Wearables:
-
-```bash
-curl http://127.0.0.1:8000/wearables \
-  -H "Authorization: Bearer JWT_AQUI"
-```
-
-Sesiones:
-
-```bash
-curl http://127.0.0.1:8000/monitoring_sessions \
-  -H "Authorization: Bearer JWT_AQUI"
-```
-
-Alertas:
-
-```bash
-curl http://127.0.0.1:8000/alerts \
-  -H "Authorization: Bearer JWT_AQUI"
-```
-
-Muestras PPG:
-
-```bash
-curl http://127.0.0.1:8000/ppg_samples \
-  -H "Authorization: Bearer JWT_AQUI"
-```
-
-Mediciones:
-
-```bash
-curl http://127.0.0.1:8000/Measurements \
-  -H "Authorization: Bearer JWT_AQUI"
+curl -X GET "http://127.0.0.1:8000/history/?limit=50&offset=0" \
+  -H "Authorization: Bearer TU_ACCESS_TOKEN"
 ```
 
 ---
 
-## Estructura del proyecto
+### 3. Registro y Consulta de Wearables (`/wearables`)
+Permite vincular relojes inteligentes (**PineTime** o **Samsung Galaxy Watch**) a la cuenta del usuario:
 
-```text
-ppg-monitoring-api/
-├── main.py
-├── README.md
-├── requeriment.txt
-├── .env.example
-├── config/
-│   └── environment.py
-├── DAO/
-│   └── database.py
-├── DTO/
-│   └── models.py
-├── ORM/
-│   └── schemas.py
-├── routes/
-│   ├── alert.py
-│   ├── app_user.py
-│   ├── city.py
-│   ├── compute_status.py
-│   ├── country.py
-│   ├── health_record.py
-│   ├── measurement.py
-│   ├── metric_type.py
-│   ├── monitoring_session.py
-│   ├── ppg_sample.py
-│   ├── severity_level.py
-│   ├── wearable.py
-│   └── wearable_model.py
-├── dependencies/
-│   └── auth_guard.py
-└── utils/
-    └── query_builder.py
-```
-
-### Componentes clave
-
-- `main.py`: punto de entrada FastAPI
-- `config/environment.py`: variables de entorno
-- `DAO/database.py`: conexion y sesion de base de datos
-- `DTO/models.py`: modelos SQLAlchemy
-- `ORM/schemas.py`: schemas Pydantic
-- `routes/`: endpoints por entidad
-- `dependencies/auth_guard.py`: validacion JWT local
-- `utils/query_builder.py`: filtros, ordenamiento y paginacion
+* `GET /wearables`: Lista los dispositivos vinculados al usuario autenticado.
+* `POST /wearables`: Registra un nuevo dispositivo asociándolo al `id_user` del token.
 
 ---
 
-## Endpoints principales
-
-## Publicos
-
-Actualmente siguen publicos los modulos no protegidos por este cambio:
-
-- `/countries`
-- `/regions`
-- `/cities`
-- `/wearable-models`
-- `/metric-types`
-- `/severity-levels`
-- `/compute_statuses`
-
-## Protegidos con JWT
-
-- `/App_users`
-- `/health-records`
-- `/wearables`
-- `/monitoring_sessions`
-- `/Measurements`
-- `/ppg_samples`
-- `/alerts`
-- `/history`
+### 4. Protocolo de Validación Clínica (`/clinical_validation/`)
+Módulo especializado para la validación médica hospitalaria (70 pacientes):
+* `POST /clinical_validation/batch_upload`: Ingesta masiva idempotente de fichas clínicas con diagnóstico médico ECG.
+* `GET /clinical_validation/records`: Consulta y exportación de registros clínicos.
 
 ---
 
-## Comportamiento de autorizacion por recurso
+## 🔒 Matriz de Seguridad y Reglas de Acceso
 
-### Perfil de usuario (`APP_USER`)
+| Recurso | Nivel de Acceso | Regla de Autorización |
+| :--- | :--- | :--- |
+| `/countries`, `/regions`, `/cities` | Público | Catálogo abierto para formularios de registro. |
+| `/wearable-models`, `/metric-types` | Público | Metadatos de dispositivos y métricas. |
+| `/App_users/{id_user}` | Protegido (JWT) | Solo permite consultar o modificar el propio perfil. |
+| `/wearables/**` | Protegido (JWT) | Solo permite manipular dispositivos propios. |
+| `/monitoring_sessions/**` | Protegido (JWT) | Solo permite acceder a sesiones propias. |
+| `/Measurements/**`, `/ppg_samples/**` | Protegido (JWT) | Validado contra la propiedad de la sesión asociada. |
+| `/history/` | Protegido (JWT) | Filtra automáticamente por `id_user` del token. |
 
-- `POST /App_users`: ya no crea usuarios; responde que el registro se hace en `ms-auth`
-- `GET /App_users`: devuelve solo el usuario autenticado
-- `GET /App_users/{id_user}`: solo permite consultar el propio usuario
-- `PUT /App_users/{id_user}`: solo permite actualizar el propio perfil y puede completar `id_city`
-- `DELETE /App_users/{id_user}`: solo permite eliminar el propio perfil
-
-### Registros de salud
-
-- `GET /health-records`: devuelve solo registros del usuario autenticado
-- `GET /health-records/{id}`: solo si el registro le pertenece
-- `POST /health-records`: crea el registro con el `user_id` del token
-- `PUT /health-records/{id}`: solo si el registro le pertenece
-- `DELETE /health-records/{id}`: solo si el registro le pertenece
-
-### Wearables
-
-- `GET /wearables`: devuelve solo wearables del usuario autenticado
-- `GET /wearables/user/{id_user}`: solo permite consultar el propio `id_user`
-- `GET /wearables/{id}`: solo si el wearable le pertenece
-- `POST /wearables`: crea el wearable con el `user_id` del token
-- `PUT /wearables/{id}`: solo si el wearable le pertenece
-- `DELETE /wearables/{id}`: solo si el wearable le pertenece
-
-### Sesiones
-
-- `GET /monitoring_sessions`: devuelve solo sesiones del usuario autenticado
-- `GET /monitoring_sessions/{id}`: solo si la sesion le pertenece
-- `GET /monitoring_sessions/user/{id_user}`: solo permite consultar su propio `id_user`
-- `POST /monitoring_sessions`: crea sesion usando el `user_id` del token
-- `PUT /monitoring_sessions/{id}`: solo si la sesion le pertenece
-- `DELETE /monitoring_sessions/{id}`: solo si la sesion le pertenece
-
-### Historial consolidado
-
-- `GET /history/`: devuelve el historial persistido del usuario autenticado, paginado con `limit` y `offset`
-- cada item incluye sesion, estado de computo, mediciones, muestras PPG y alertas relacionadas
-- el endpoint esta pensado para que la app reconstruya el historial completo despues de cerrar sesion, reinstalar o abrir en otro momento
-- la eliminacion del historial desde frontend usa `DELETE /monitoring_sessions/{id_session}`; por las relaciones con cascade se eliminan mediciones, muestras y alertas asociadas a esa sesion
-
-Ejemplo:
-
-```bash
-curl "http://127.0.0.1:8000/history/?limit=100&offset=0" \
-  -H "Authorization: Bearer JWT_AQUI"
-```
-
-### Mediciones
-
-- `GET /Measurements`: devuelve solo mediciones asociadas a sesiones del usuario
-- `GET /Measurements/{id}`: solo si pertenecen a una sesion del usuario
-- `GET /Measurements/session/{id_session}`: solo si la sesion es del usuario
-- `POST /Measurements`: solo permite crear mediciones sobre sesiones propias
-- `PUT /Measurements/{id}`: solo si el recurso es del usuario y la sesion destino tambien
-- `DELETE /Measurements/{id}`: solo si el recurso es del usuario
-
-### Muestras PPG
-
-- `GET /ppg_samples`: devuelve solo muestras de sesiones propias
-- `GET /ppg_samples/session/{id_session}`: solo si la sesion es del usuario
-- `POST /ppg_samples`: solo en sesiones propias
-- `POST /ppg_samples/bulk`: valida cada sesion contra el usuario autenticado
-- `PUT /ppg_samples/{id}`: solo si la muestra pertenece al usuario
-- `DELETE /ppg_samples/{id}`: solo si la muestra pertenece al usuario
-
-### Alertas
-
-- `GET /alerts`: devuelve solo alertas de sesiones propias
-- `GET /alerts/{id}`: solo si la alerta pertenece al usuario
-- `GET /alerts/session/{id_session}`: solo si la sesion es del usuario
-- `POST /alerts`: solo en sesiones propias
-- `PUT /alerts/{id}`: solo si la alerta pertenece al usuario y la sesion destino tambien
-- `DELETE /alerts/{id}`: solo si la alerta pertenece al usuario
-
----
-
-## Notas importantes
-
-- este servicio no guarda contrasenas
-- este servicio no valida passwords
-- este servicio no lee ni escribe `AUTH_CREDENTIAL`
-- este servicio no implementa Basic Auth
-- este servicio no consulta a `ms-auth` por request
-- la validez del acceso depende de compartir el mismo `JWT_SECRET_KEY` y `JWT_ALGORITHM` con `ms-auth`
-- el registro de usuario autenticable se hace exclusivamente en `ms-auth`
-
----
-
-## Estado actual y limitaciones
-
-- no hay migraciones automaticas
-- no hay tests automatizados incluidos
-- el nombre del archivo de dependencias sigue siendo `requeriment.txt`
-- algunos prefijos de ruta mantienen naming heredado, por ejemplo `/Measurements` con mayuscula
-- la creacion de usuarios autenticables ya no ocurre en este servicio
-
----
-
-## Recomendaciones operativas
-
-Para que esto funcione bien entre servicios:
-
-1. Usa exactamente el mismo `JWT_SECRET_KEY` en `ms-auth`, `ms-mid` y `ms-crud`.
-2. Mantén `JWT_ALGORITHM=HS256` en los tres servicios.
-3. Haz que frontend y `ms-mid` reenvien siempre el token del usuario.
-4. No intentes reconstruir identidad desde parametros como `id_user`; el origen de verdad ahora es el JWT.
-
----
-
-## Resumen rapido
-
-Antes:
-
-- el CRUD aceptaba acceso sin JWT en usuarios, salud, wearables, sesiones, alertas, metricas y muestras
-- `APP_USER` estaba mezclado con datos de autenticacion
-
-Ahora:
-
-- esas rutas requieren Bearer token
-- el token se valida localmente
-- el acceso queda restringido al dueno del recurso
-- `APP_USER` ya no contiene contrasenas
-- `AUTH_CREDENTIAL` queda fuera del alcance de este servicio
-- el servicio sigue desacoplado de `ms-auth`
+Cualquier solicitud con token expirado, firma alterada o sin header responderá `401 Unauthorized`. Si el recurso solicitado existe pero pertenece a otro usuario, responderá `403 Forbidden`.
