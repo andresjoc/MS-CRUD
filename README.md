@@ -72,7 +72,8 @@ erDiagram
 ### 1. Clonar y Acceder al Directorio
 
 ```bash
-cd "Backend/MSCRUD/ppg-monitoring-api"
+git clone https://github.com/andresjoc/MS-CRUD.git
+cd MS-CRUD
 ```
 
 ### 2. Crear y Activar el Entorno Virtual
